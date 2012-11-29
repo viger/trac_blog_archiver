@@ -103,7 +103,7 @@ var tracPlugin = {};
             var sUrl = oPluginConfigData.worklog_config.url + '/blog/' + sShortname;
             var self = this;
             $("#addWorklog").attr('disabled', true);
-            $("#submitting").html("正在发送日志到服务器，请耐心等待...");
+            $("#submitting").html("正在检查日志是否存在，请耐心等待(请勿关闭该窗口)...");
             this.fnCheckAjaxUrl(sUrl, {}, function(iStatusCode){
                 var sAction = 'new';
                 var url = oPluginConfigData.worklog_config.url + '/blog/create';
@@ -122,12 +122,12 @@ var tracPlugin = {};
                             'blog-save': 'Save post'
                 };
 
-                /*$("#submitting").html("正在发送日志到服务器，请耐心等待...");*/
+                $("#submitting").html("正在发送日志到服务器，请耐心等待(请勿关闭该窗口)...");
                 self.fnSendAjaxData(url, {}, function(data){
                     var sFormToken = $("input[name=__FORM_TOKEN]", data).val();
                     oData['__FORM_TOKEN'] = sFormToken;
                     self.fnSendAjaxData(url, oData, function(datas){
-                        $("#submitting").html("日志发布成功!");
+                        $("#submitting").html(sAction == 'new' ? "日志发布成功!" : "日志更新成功!");
                         self.fnResetWoklogContents();
                         $("#addWorklog").attr('disabled', false);
                     }, 'POST', oTracookie);
@@ -258,7 +258,7 @@ var tracPlugin = {};
         oInputSpan.appendTo(oLi);
         if( !bChild ){
             var oAddSpan = $("<span></span>");
-            var oAdd = $("<img src='add.jpg' title='添加一条日志'/>");
+            var oAdd = $("<img src='../images/add.jpg' title='添加一条日志'/>");
             oAdd.appendTo(oAddSpan);
             oAdd.click(function(){
                 tp.fnCreateBlogInput(sInputId, false);
@@ -266,14 +266,14 @@ var tracPlugin = {};
             oAddSpan.appendTo(oLi);
         }
         var oAddCSpan = $("<span></span>");
-        var oAddC = $("<img src='add_c.jpg' title='添加一条子日志'/>");
+        var oAddC = $("<img src='../images/add_c.jpg' title='添加一条子日志'/>");
         oAddC.appendTo(oAddCSpan);
         oAddC.click(function(){
             tp.fnCreateBlogInput(sInputId, true);
         });
         oAddCSpan.appendTo(oLi);
         var oRemoveSpan = $("<span></span>");
-        var oRemove = $("<img src='remove.jpg' title='删除这条日志'/>");
+        var oRemove = $("<img src='../images/remove.jpg' title='删除这条日志'/>");
         oRemove.appendTo(oRemoveSpan);
         oRemove.click(function(){
             if( oLi.parent().is("ul[id=" + sWorklogContentId + "]") && $("ul[id=" + sWorklogContentId + "]").children("li").length <= 1 ){
@@ -482,12 +482,12 @@ var tracPlugin = {};
                 }
             },
             statusCode:{403: function(){
-                    self.fnShowNotice("登录服务器失败，请确认是否设置正确的用户名和密码!");
+                    self.fnShowNotice("服务器权限认证失败，请输入正确的用户名和密码!<br/>如果你没有登录Trac,请先<a href='" + oPluginConfigData.worklog_config.url + "' target='_blank'>登录Trac</a>,并忽略前面的提示消息。");
                 },
-                    401: function(){
-                    self.fnShowNotice("登录服务器失败，请确认是否设置正确的用户名和密码!");
+                401: function(){
+                    self.fnShowNotice("服务器要求认证权限，请输入正确的用户名和密码!<br/>如果你没有登录Trac,请先<a href='" + oPluginConfigData.worklog_config.url + "' target='_blank'>登录Trac</a>,并忽略前面的提示消息。");
                 },
-                    404: function(){
+                404: function(){
                     self.fnShowNotice("无法连接服务。");
                 }
             }
