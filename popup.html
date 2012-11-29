@@ -1,0 +1,243 @@
+<!doctype html>
+<html>
+  <head>
+  	 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Popup</title>
+    <link rel="stylesheet" href="jquery-ui.css" />
+    <style type="text/css">
+     body{
+        width:500px;
+        height:auto;
+        font-size:12px;
+        margin:0 auto;
+        padding:0 auto;
+     }
+     
+     ul{
+        margin:0px;
+        padding:0px;
+        list-style:none;
+     }
+
+     li{
+        display:block;
+     }
+
+     .title{
+        min-width: 60px;
+     }
+
+     input{
+        border:1px solid #666;
+     }
+
+     .clear{
+        clear:both;
+     }
+     
+     li input{
+        width: 290px;
+     }
+
+     .notice{
+        border: #990033 1px solid;
+        padding: 5px 0px 5px 5px;
+        color: #cc0000;
+        background: #f8becd;
+        width:98%;
+        margin-top:10px;
+     }
+
+     #worklog_contents ul li span img {
+        cursor:pointer;
+        width:16px;
+     }
+
+     table{
+        border-spacing: 0px;
+        border-collapse:collapse;
+     }
+
+     td{
+        border:1px #ccc solid;
+        min-height: 35px;
+        padding:5px;
+     }
+
+     .log_child{
+        margin-left:5px;
+     }
+
+     </style>
+  </head>
+  <body>
+    <div id="tabs">
+        <ul>
+            <li><a href="#add_new_blog">添加日志</a></li>
+            <li><a href="#generate_week_log">生成周报</a></li>
+            <li><a href="#setting_plugin">设置</a></li>
+            <li><a href="#about_plugin">关于</a></li>
+        </ul>
+       <div class="notice" style="display:none;"></div>
+       <div id="add_new_blog">
+            <table>
+                <tbody>
+                    <tr>
+                        <td width="60px">短名称:</td>
+                        <td>
+                            <span id="short_name_s" style="cursor:pointer;"></span>
+                            <span id="short_name_i" style="display:none;"><input type="text" value="" id="short_name" style="width:249px;"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>标题:</td>
+                        <td>
+                            <span id="title_s" style="cursor:pointer;"></span>
+                            <span id="title_i" style="display:none;"><input type="text" value="" id="title" style="width:249px;"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>内容</td>
+                        <td>
+                            <div id="worklog_contents_input" style="display:none;">
+                                <div>
+                                    <b>今日工作:</b>
+                                    <ul id="today_worklog_contents">
+                                    </ul>
+                                </div>
+                                <div>
+                                    <b>明日工作:</b>
+                                    <ul id="tomrrow_worklog_contents">
+                                    </ul>
+                                </div>
+                            </div>
+                            <div id="worklog_contents_textarea" style="display:none;">
+                                <textarea id='worklog_contents' style="width:365px;height:165px;border:1px solid #999;">
+                                </textarea>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2">
+                            <input type="button" value="添加日志" name="addWorklog" id="addWorklog" style="cursor:pointer;"/> <span id="submitting"></span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+       </div>
+          <div id="generate_week_log">
+            <div id="generate_week_log_list">
+                <span id="loading_blog_list"><b>正在载入日志列表....</b></span>
+                  <fieldset>
+                        <legend> 快速生成 </legend>
+                        天数: <input id="iDays" type="text" value="5" size="2"/>
+                        <input id="btn_Generate_speed" type="button" value="生成" style="cursor:pointer;"/>
+                    </fieldset>
+                    <br/>
+                    <div id="work_log_blog_list">
+                        <fieldset>
+                            <legend> 勾选生成 </legend>
+                            <input id="btn_Generate_by_checked" type="button" value="生成" style="cursor:pointer;"/>
+                            <ul id="work_log_blog_list">
+                            </ul>
+                        </fieldset>
+                    </div>
+               </div>
+               <div id="generate_week_log_result" style="display:none;">
+                    <b>生成的日志:</b><br/>
+                    生成的日志不能自动去除重复日志，也不一定能够正确的排版，请自行调整。<input id="btn_Generate_back" type="button" value="重新生成" style="cursor:pointer;"/><br/>
+                    <textarea id="generate_week_log_result_textarea" style="width:450px;height:350px;"></textarea>
+               </div>
+          </div>
+          <div id="setting_plugin">
+                <table>
+                    <tbody>
+                        <tr>
+                            <td width="60px">日志网址:</td>
+                            <td>
+                                <input type="text" value="http://trac.iqnode.cn:8010/Kronos/blog/" id="blog_url" style="width:349px;"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>用户名:</td>
+                            <td>
+                                <input type="text" value="" id="blog_user_name" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>密码:</td>
+                            <td>
+                                <input type="password" value="" id="blog_password" /> * 亲，密码不会被插件记录。
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>中文名:</td>
+                            <td>
+                                <input type="text" value="" id="blog_user_name_cn" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>日志分类:</td>
+                            <td>
+                                <input type="text" value="工作日志" id="blog_categories" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>显示日志个数:</td>
+                            <td>
+                                <input type="text" value="20" id="blog_show_number" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>复杂模式:</td>
+                            <td>
+                                <input type="checkbox" value="1" id="add_work_log_by_input" /> 日志输入选择input框输入，试过才知道。
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>删除:</td>
+                            <td>
+                                <input type="checkbox" value="1" id="del_add_work_log_input" checked/> 删除(新增)日志确认
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>检查Trac:</td>
+                            <td>
+                                <select id="check_trac_samp">
+                                    <option value="1">1分钟</option>
+                                    <option value="5" selected>5分钟</option>
+                                    <option value="10">10分钟</option>
+                                    <option value="30">30分钟</option>
+                                    <option value="60">1小时</option>
+                                </select>
+                                 检查Trac时间间隔设置(下个版本)
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="2">
+                                <input type="button" value="保存" name="saveSetting_btn" id="saveSetting_btn" />
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+          </div>
+          <div id="about_plugin" style="padding:10px;">
+            TracPlugin是一个简单的工具，友善的扩展了trac的功能。使用她之前，需要设置一些简单的设置，当然你可以不设置她，她也不会工作。<br/>
+            她不会记录你的密码，别人也无法查看你的密码，亲，一定要放心哦。<br/>
+            她很努力的帮助你，别忘了给她一个好评啊。<br/>
+            她现在的年龄: 1.0.1119<br/>
+            <br/>
+            下面是帮助她成长的家伙们:<br/>
+            Tom (<a href="http://www.mchen.info" target="_blank">网址</a>)<br/>
+            Paul (<a href="http://blog.zetng.com" target="_blank">网址</a>)<br/>
+            <br/>
+            其他？真的没有什么了...
+          </div>
+      </div>
+    <script src="jquery/jquery-1.8.2.js"></script>
+    <script src="jquery/jquery-ui.js"></script>
+    <script src="base64.js"></script>
+    <script src="common.js"></script>
+    <script src="pageaction_popup.js"></script>
+  </body>
+</html>
