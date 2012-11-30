@@ -67,13 +67,20 @@ var tracPlugin = {};
         if( oPluginConfigData.worklog_config.add_work_log_by_input == 1){
             $("div[id=worklog_contents_input]").css("display", "");
             $("div[id=worklog_contents_textarea]").css("display", "none");
+            $("input[id=saveDaftWorklog]").css("display", "none");
             this.fnCreateBlogInput('today_worklog_contents', false);
             this.fnCreateBlogInput('tomrrow_worklog_contents', false);
         }
         else{
             $("div[id=worklog_contents_input]").css("display", "none");
             $("div[id=worklog_contents_textarea]").css("display", "");
-            $("textarea[id=" + sWorklogContentId['textarea'] + "]").val("'''今日工作'''\r\n   * 请在这里输入今日工作内容\r\n\r\n'''明日工作'''\r\n   * 请在这里输入明日工作内容")
+            $("input[id=saveDaftWorklog]").css("display", "");
+            $("#submitting").html("");
+            var sWorklogDaft = "'''今日工作'''\r\n   * 请在这里输入今日工作内容\r\n\r\n'''明日工作'''\r\n   * 请在这里输入明日工作内容";
+            if( 'undefined' !=  typeof oPluginConfigData.worklog_config.work_log_daft ){
+                sWorklogDaft = oPluginConfigData.worklog_config.work_log_daft;
+            }
+            $("textarea[id=" + sWorklogContentId['textarea'] + "]").val(sWorklogDaft)
         }
         this.fnGetBlogList();
     };
@@ -86,6 +93,20 @@ var tracPlugin = {};
     tp.fnHiddenNotice = function(){
         $(".notice").html("");
         $(".notice").css("display", "none");
+    };
+
+    tp.fnSaveDaftWorklog = function(){
+        var contents = $("textarea[id=" + sWorklogContentId['textarea'] + "]").val();
+        
+        if( contents.length <= 0 ){
+            this.fnShowNotice('请填写日志!');
+            return "";
+        }
+        else{
+            oPluginConfigData.worklog_config.work_log_daft = contents;
+            this.fnSetConfig(oPluginConfigData);
+            $("#submitting").html("草稿已保存!");
+        }
     };
 
     tp.fnSubmitWorklog = function(){
@@ -144,13 +165,15 @@ var tracPlugin = {};
             this.fnCreateBlogInput('tomrrow_worklog_contents', false);
         }
         else{
-            $("textarea[id=" + sWorklogContentId['textarea'] + "]").val("'''今日工作'''\r\n   * 请在这里输入今日工作内容\r\n\r\n'''明日工作'''\r\n   * 请在这里输入明日工作内容");
+            oPluginConfigData.worklog_config.work_log_daft = "'''今日工作'''\r\n   * 请在这里输入今日工作内容\r\n\r\n'''明日工作'''\r\n   * 请在这里输入明日工作内容";
+            this.fnSetConfig(oPluginConfigData);
+            $("textarea[id=" + sWorklogContentId['textarea'] + "]").val(oPluginConfigData.worklog_config.work_log_daft);
         }
     };
 
     tp.fnCreateWoklogContentsbyTextarea = function(){
         var contents = $("textarea[id=" + sWorklogContentId['textarea'] + "]").val();
-        console.log(contents);
+        
         if( contents.length <= 0 ){
             this.fnShowNotice('请填写日志!');
             return "";
@@ -662,6 +685,10 @@ $(document).ready(function(){
 
     $("#addWorklog").click(function(){
         tracPlugin.fnSubmitWorklog();
+    });
+
+    $("input[id=saveDaftWorklog]").click(function(){
+        tracPlugin.fnSaveDaftWorklog();
     });
 
     $("#short_name_s").click(function(){
