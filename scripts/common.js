@@ -1,24 +1,9 @@
 var tracPlugin = {};
 (function(tp){
     var date = new Date();
-    var oInitPluginConfigData = {
-                              "version": '1.0.1119',
-                              "author": {'tom': 'http://www.mchen.info', 
-                                         'paul': 'http://blog.zetng.com'
-                              },
-                              "worklog_config": {
-                                         "url": 'http://trac.iqnode.cn:8010/Kronos',
-                                         "username": 'Your login name',
-                                         "username_cn": 'Your name(chinese/english)',
-                                         "blog_categories": 'Work Log',
-                                         "blog_show_number": 20
-                              }
-    };
     var isFirstRun = false;
     var oPluginConfigData = {};
-    var oTracookie = null;
     var aTracBlogDataList = [];
-    var sPluginDataName = 'oWorkLogPluginConfigData';
     var sWorklogContentId = {'today': 'today_worklog_contents',
                              'tomrrow': 'tomrrow_worklog_contents',
                              'textarea': 'worklog_contents',
@@ -35,43 +20,41 @@ var tracPlugin = {};
             chrome.cookies = chrome.experimental.cookies;
         }
 
-        oPluginConfigData = this.fnGetConfig();
+        var self = this;
 
-        if( isFirstRun ){
-            var sNotice = "欢迎使用trac日志工具,这是你的第一次，请先设置本插件，然后<a href='" + oPluginConfigData.worklog_config.url + "' target='_blank'>登录trac</a>再使用。当前版本: " + oPluginConfigData.version;
-            this.fnShowNotice(sNotice);
-        }
-        else{
-            this.fnHiddenNotice();
-        }
+        self.fnCallBackProcess('get_config', undefined, function(response){
+            oPluginConfigData = response.oData;
 
-        if( false === this.fnCheckTracLogined() ){
-            this.fnLoginTracWebSite();
-        }
+            if( isFirstRun ){
+                var sNotice = "欢迎使用trac日志工具,这是你的第一次，请先设置本插件，然后<a href='" + oPluginConfigData.worklog_config.url + "' target='_blank'>登录trac</a>再使用。当前版本: " + oPluginConfigData.version;
+                self.fnShowNotice(sNotice);
+            }
+            else{
+                self.fnHiddenNotice();
+            }
 
-        $("#blog_url").val(oPluginConfigData.worklog_config.url);
-        $("#blog_user_name").val(oPluginConfigData.worklog_config.username);
-        $("#blog_password").val('hello word!');
-        $("#blog_user_name_cn").val(oPluginConfigData.worklog_config.username_cn);
-        $("#blog_categories").val(oPluginConfigData.worklog_config.blog_categories);
-        $("#del_add_work_log_input").attr('checked', oPluginConfigData.worklog_config.del_add_work_log_input === 1 ? true : false);
-        $("#add_work_log_by_input").attr('checked', oPluginConfigData.worklog_config.add_work_log_by_input === 1 ? true : false);
-        $("#btn_Generate_speed").attr("disabled", true);
-        $("#btn_Generate_by_checked").attr("disabled", true);
-        var sShorName = this.fnGetShortName();
-        $("#short_name_s").html(sShorName);
-        $("input[id=short_name]").val(sShorName);
-        var stitle = this.fnGetTitle();
-        $("#title_s").html(stitle);
-        $("input[id=title]").val(stitle);
-        if( oPluginConfigData.worklog_config.add_work_log_by_input == 1){
-            $("div[id=worklog_contents_input]").css("display", "");
-            $("div[id=worklog_contents_textarea]").css("display", "none");
-            $("input[id=saveDaftWorklog]").css("display", "none");
-            this.fnCreateBlogInput('today_worklog_contents', false);
-            this.fnCreateBlogInput('tomrrow_worklog_contents', false);
-        }
-        else{
+            self.fnCallBackProcess('check_logined', undefined, function(response){
+                console.log(response.bLogined, 'response.bLogined');
+                if( !response.bLogined ){
+                    self.fnCallBackProcess('login');
+                }
+            });
+
+            self.fnCallBackProcess('test_ajax');
+
+            $("#blog_url").val(oPluginConfigData.worklog_config.url);
+            $("#blog_user_name").val(oPluginConfigData.worklog_config.username);
+            $("#blog_password").val('hello word!');
+            $("#blog_user_name_cn").val(oPluginConfigData.worklog_config.username_cn);
+            $("#blog_categories").val(oPluginConfigData.worklog_config.blog_categories);
+            $("#btn_Generate_speed").attr("disabled", true);
+            $("#btn_Generate_by_checked").attr("disabled", true);
+            var sShorName = self.fnGetShortName();
+            $("#short_name_s").html(sShorName);
+            $("input[id=short_name]").val(sShorName);
+            var stitle = self.fnGetTitle();
+            $("#title_s").html(stitle);
+            $("input[id=title]").val(stitle);
             $("div[id=worklog_contents_input]").css("display", "none");
             $("div[id=worklog_contents_textarea]").css("display", "");
             $("input[id=saveDaftWorklog]").css("display", "");
@@ -81,8 +64,29 @@ var tracPlugin = {};
                 sWorklogDaft = oPluginConfigData.worklog_config.work_log_daft;
             }
             $("textarea[id=" + sWorklogContentId['textarea'] + "]").val(sWorklogDaft)
+        });
+    };
+
+    tp.fnCallBackProcess = function(action, vData, fnCallBack){
+        if( 'undefined' == typeof action ){
+            return ;
         }
-        this.fnGetBlogList();
+        
+        var request = {'action': action};
+        if( 'undefined' == typeof vData ){
+            request.data = vData;
+        }
+
+        if( 'undefined' == typeof fnCallBack ){
+            chrome.extension.sendMessage('', request);
+        }
+        else{
+            chrome.extension.sendMessage('', request, fnCallBack);
+        }
+    };
+
+    tp.console = function(msg){
+        console.log(msg);
     };
 
     tp.fnShowNotice = function(msg){
@@ -113,12 +117,12 @@ var tracPlugin = {};
         var sShortname = $("input[id=short_name]").val();
         var sTitle = $("input[id=title]").val();
         var contents = '';
-        if( oPluginConfigData.worklog_config.add_work_log_by_input == 1){
+        /*if( oPluginConfigData.worklog_config.add_work_log_by_input == 1){
             contents = this.fnCreateWoklogContents(sWorklogContentId['today']) + this.fnCreateWoklogContents(sWorklogContentId['tomrrow']);
         }
-        else{
+        else{*/
             contents = this.fnCreateWoklogContentsbyTextarea();
-        }
+        //}
 
         if( contents !== "" ){
             var sUrl = oPluginConfigData.worklog_config.url + '/blog/' + sShortname;
@@ -158,17 +162,17 @@ var tracPlugin = {};
     };
 
     tp.fnResetWoklogContents =  function(){
-        if( oPluginConfigData.worklog_config.add_work_log_by_input == 1){
+        /*if( oPluginConfigData.worklog_config.add_work_log_by_input == 1){
             $("#" + sWorklogContentId['today']).html("");
             $("#" + sWorklogContentId['tomrrow']).html("");
             this.fnCreateBlogInput('today_worklog_contents', false);
             this.fnCreateBlogInput('tomrrow_worklog_contents', false);
         }
-        else{
+        else{*/
             oPluginConfigData.worklog_config.work_log_daft = "'''今日工作'''\r\n   * 请在这里输入今日工作内容\r\n\r\n'''明日工作'''\r\n   * 请在这里输入明日工作内容";
             this.fnSetConfig(oPluginConfigData);
             $("textarea[id=" + sWorklogContentId['textarea'] + "]").val(oPluginConfigData.worklog_config.work_log_daft);
-        }
+        //}
     };
 
     tp.fnCreateWoklogContentsbyTextarea = function(){
@@ -182,42 +186,6 @@ var tracPlugin = {};
         return contents.replace(/([^\']{3})[\r|\n]{1,2}/ig, "$1[[BR]]\r\n");
     };
 
-    tp.fnCreateWoklogContents = function(oUl, level){
-        var self = this;
-        if( 'undefined' == typeof oUl ){
-            oUl = $('#' + sWorklogContentId['today']);
-        }
-
-        if( 'string' == typeof oUl ){
-            oUl = $('#' + oUl);
-        }
-
-        var sContents = "";
-        if( 'undefined' == typeof level ){
-            level = 1;
-            sContents = $(oUl).attr("id") == sWorklogContentId['today'] ? "'''今日工作'''\r\n" : "'''明日工作'''\r\n";
-        }
-        
-        //var index = 1;
-        oUl.children("li").each(function(){
-            /*if( 1 === level ){
-                sContents = sContents + '    ' + index.toString() + ', ';
-                index++;
-            }
-            else{*/
-                sContents = sContents + self.fnCreateSpace(level) + '* ';
-            //}
-
-            sContents = sContents + $($("span > input[type=text]", $(this))[0]).val() + " [[BR]]\r\n";
-            var childs = $("div > ul", $(this));
-            if( childs.length >= 1){
-                sContents = sContents + self.fnCreateWoklogContents($(childs[0]), (level + 1));
-            }
-        });
-
-        return sContents + "\r\n";
-    };
-
     tp.fnCreateSpace = function(level){
         if( 1 === level ){
             return '   ';
@@ -229,115 +197,6 @@ var tracPlugin = {};
         }
 
         return sSpace;
-    };
-
-    tp.fnCreateBlogInput = function(sTargetId, bChild){
-        if( 'undefined' == typeof sTargetId ){
-            sTargetId = sWorklogContentId['today'];
-        }
-
-        if( 'undefined' == typeof bChild ){
-            bChild = false;
-        }
-
-        if( bChild ){
-            var oSiblingChild = this.fnSearchSiblingInput(sTargetId);
-            if( false === oSiblingChild ){
-                var oDiv = $("<div class='log_child'></div>");
-                var sInputId = sTargetId + '_0';
-                var oUl = $("<ul id='" + sInputId + "'></ul>");
-                oUl.appendTo(oDiv);
-                oDiv.appendTo($("li[id=" + sTargetId + "]"));
-            }
-            else{
-                var oLastChild = $(oSiblingChild[oSiblingChild.length - 1]);
-                var iFixId = parseInt(oLastChild.attr("id").match(/_[\d]+$/ig)[0].replace("_", "")) + 1;
-                var sInputId = sTargetId + '_' + iFixId;
-                var oChild = oLastChild;
-            }
-        }
-        else{
-            if( sWorklogContentId['tomrrow'] !== sTargetId && sWorklogContentId['today'] !== sTargetId ){
-                var iFixId = parseInt($("#" + sTargetId).attr("id").match(/_[\d]+$/ig)[0].replace("_", "")) + 1;
-                var sInputId = sTargetId.replace(/_[\d]+$/ig, "_" + iFixId);
-                var oChild = $("#" + sTargetId);
-            }
-            else{
-                var oUl = $("ul[id=" + sTargetId + "]");
-                var sInputId = sTargetId + '_0';
-            }
-        }
-
-        var oLi = $("<li id='" + sInputId + "'></li>");
-        if( 'undefined' != typeof oUl ){
-            oLi.appendTo(oUl);
-        }
-        else{
-            oLi.insertAfter(oChild);
-        }
-        var oInput = $("<input id='" + sInputId + "' value='' name='" + sInputId + "' type='text' />");
-        var oInputSpan = $("<span></span>");
-        oInput.appendTo(oInputSpan);
-        oInputSpan.appendTo(oLi);
-        if( !bChild ){
-            var oAddSpan = $("<span></span>");
-            var oAdd = $("<img src='../images/add.jpg' title='添加一条日志'/>");
-            oAdd.appendTo(oAddSpan);
-            oAdd.click(function(){
-                tp.fnCreateBlogInput(sInputId, false);
-            });
-            oAddSpan.appendTo(oLi);
-        }
-        var oAddCSpan = $("<span></span>");
-        var oAddC = $("<img src='../images/add_c.jpg' title='添加一条子日志'/>");
-        oAddC.appendTo(oAddCSpan);
-        oAddC.click(function(){
-            tp.fnCreateBlogInput(sInputId, true);
-        });
-        oAddCSpan.appendTo(oLi);
-        var oRemoveSpan = $("<span></span>");
-        var oRemove = $("<img src='../images/remove.jpg' title='删除这条日志'/>");
-        oRemove.appendTo(oRemoveSpan);
-        oRemove.click(function(){
-            if( oLi.parent().is("ul[id=" + sWorklogContentId + "]") && $("ul[id=" + sWorklogContentId + "]").children("li").length <= 1 ){
-                alert("不能删除所有日志输入框!");
-            }
-            else{
-                var bConfirmRemove = true;
-                if( oPluginConfigData.worklog_config.del_add_work_log_input === 1 ){
-                    bConfirmRemove = confirm("是否删除本条日志记录及其子记录?");
-                }
-                if( bConfirmRemove ){
-                    oLi.remove();
-                }
-            }
-        });
-        oRemoveSpan.appendTo(oLi);
-
-        return true;
-    };
-
-    tp.fnSearchSiblingInput = function(sParentId){
-        if( 'undefiend' == typeof sParentId ){
-            return false;
-        }
-        
-        var oDiv = $("li[id=" + sParentId + "]").children("div");
-        if( oDiv.length === 0 ){
-            return false;
-        }
-
-        var oUl = $(oDiv[0]).children("ul");
-        if( oUl.length === 0 ){
-            return false;
-        }
-
-        var oChilds = $(oUl[0]).children("li");
-        if( oChilds.length > 0 ){
-            return oChilds;
-        }
-
-        return false;
     };
 
     tp.fnCreateWeeklog = function(vData){
@@ -475,119 +334,7 @@ var tracPlugin = {};
         return sSTR;
     };
 
-    tp.fnLoginTracWebSite = function(){
-        var url = oPluginConfigData.worklog_config.url + '/login';
-        var self = this;
-        this.fnSendAjaxData(url, [], function(){
-            self.fnGetTraCookies()
-        });
-    };
     
-
-    tp.fnSendAjaxData = function(url, data, successFun, type, header, completeFun){
-        var self = this;
-        $.ajax({
-            url: url,
-            beforeSend : function(req) {
-                req.setRequestHeader('Authorization', "Basic " + oPluginConfigData.worklog_config.auth);
-            },
-            data: data,
-            success: function(data){
-                if( 'function' == typeof successFun ){
-                    successFun(data);
-                }
-            },
-            type: ('undefined' == typeof type) ? 'GET' : type,
-            headers: ('undefined' == typeof header) ? {} : header,
-            complete: function(XHR, statusCode){
-                if( 'function' == typeof completeFun ){
-                    completeFun(XHR, statusCode);
-                }
-            },
-            statusCode:{403: function(){
-                    self.fnShowNotice("服务器权限认证失败，请输入正确的用户名和密码!<br/>如果你没有登录Trac,请先<a href='" + oPluginConfigData.worklog_config.url + "' target='_blank'>登录Trac</a>,并忽略前面的提示消息。");
-                },
-                401: function(){
-                    self.fnShowNotice("服务器要求认证权限，请输入正确的用户名和密码!<br/>如果你没有登录Trac,请先<a href='" + oPluginConfigData.worklog_config.url + "' target='_blank'>登录Trac</a>,并忽略前面的提示消息。");
-                },
-                404: function(){
-                    self.fnShowNotice("无法连接服务。");
-                }
-            }
-        });
-    };
-
-    tp.fnCheckAjaxUrl = function(url, data, successFun, type, header){
-        var self = this;
-        $.ajax({
-            url: url,
-            beforeSend : function(req) {
-                req.setRequestHeader('Authorization', "Basic " + oPluginConfigData.worklog_config.auth);
-            },
-            data: data,
-            success: function(data){
-                if( 'function' == typeof successFun ){
-                    successFun(200);
-                }
-            },
-            type: ('undefined' == typeof type) ? 'GET' : type,
-            headers: ('undefined' == typeof header) ? {} : header,
-            statusCode:{403: function(){
-                    if( 'function' == typeof successFun ){
-                        successFun(403);
-                    }
-                },
-                    401: function(){
-                    if( 'function' == typeof successFun ){
-                        successFun(401);
-                    }
-                },
-                    404: function(){
-                    if( 'function' == typeof successFun ){
-                        successFun(404);
-                    }
-                }
-            }
-        });
-    };
-
-    tp.fnCheckTracLogined = function(){
-        var oCookies = null == oTracookie ? this.fnGetTraCookies() : oTracookie;
-        if( 'undefined' != typeof oCookies && null !== oCookies ){
-            return true;
-        }
-
-        return false;
-    };
-
-    tp.fnGetTraCookies = function(){
-        chrome.cookies.getAll(this.fnGetUrlInfo(), function(cookies){
-            if( null != cookies ){
-                oTracookie = {};
-                for( var i=0; i < cookies.length; i++ ){
-                    oTracookie[cookies[i].name] = cookies[i].value;
-                }
-            }
-
-            return oTracookie;
-        });
-    };
-
-    tp.fnGetUrlInfo = function(){
-        var sUrl = oPluginConfigData.worklog_config.url;
-        var sUrlRex = /^http\:\/\/([^\/]*)/ig;
-        var sPathRex = /^\/([^\/]*)/ig;
-        var aDomain = sUrl.match(sUrlRex);
-        var sDomain = (aDomain[0].replace("http://", "").split(":"))[0];
-        var sPath = sPathRex.exec(sUrl.replace(aDomain[0], ""));
-        
-        if( null != sPath ){
-            return {'domain': sDomain,'path': sPath[0]};
-        }
-        else{
-            return {'domain': sDomain};
-        }
-    };
 
     tp.fnSetPluginConfig = function(){
         var url = $("#blog_url").val();
@@ -600,8 +347,10 @@ var tracPlugin = {};
         oPluginConfigData.worklog_config.auth = Base64.encode($("#blog_user_name").val() + ":" + $("#blog_password").val());
         oPluginConfigData.worklog_config.username_cn = $("#blog_user_name_cn").val();
         oPluginConfigData.worklog_config.blog_categories = $("#blog_categories").val();
-        oPluginConfigData.worklog_config.del_add_work_log_input = $('#del_add_work_log_input')[0].checked ? 1 : 0;
-        oPluginConfigData.worklog_config.add_work_log_by_input = $('#add_work_log_by_input')[0].checked ? 1 : 0;
+        /*oPluginConfigData.worklog_config.del_add_work_log_input = $('#del_add_work_log_input')[0].checked ? 1 : 0;
+        oPluginConfigData.worklog_config.add_work_log_by_input = $('#add_work_log_by_input')[0].checked ? 1 : 0;*/
+        oPluginConfigData.worklog_config.check_trac_samp = $("#check_trac_samp").val();
+        oPluginConfigData.worklog_config.check_blog_samp = $("#check_blog_samp").val();
         this.fnSetConfig(oPluginConfigData);
         isFirstRun = false;
         this.init();
@@ -647,33 +396,6 @@ var tracPlugin = {};
 
         return date.getFullYear().toString() + "年" + (date.getMonth()+1).toString() + "月" + date.getDate().toString() + '日 ' + sWeekDay;
     };
-
-    tp.fnGetConfig = function(){
-        var _localStorage = window.localStorage;
-        if( !_localStorage ){
-            alert('你的浏览器不支持本地存储数据,请先在chrome中打开本地存储数据选项。chrome://configures');
-            return ;
-        }
-        
-        var oConfigData = _localStorage.getItem(sPluginDataName);
-        if( null == oConfigData || 'undefined' == typeof oConfigData || "undefined" == oConfigData ){
-            this.fnSetConfig();
-            isFirstRun = true;
-            return oInitPluginConfigData;
-        }
-
-        isFirstRun = false;
-        return JSON.parse(oConfigData);
-    };
-
-    tp.fnSetConfig = function(data){
-        if( 'undefined' == typeof data ){
-            data = oInitPluginConfigData;
-        }
-
-        window.localStorage.setItem(sPluginDataName, JSON.stringify(data));
-    };
-
 })(tracPlugin);
 
 $(document).ready(function(){

@@ -1,19 +1,20 @@
 {
   "manifest_version": 2,
   "name": "Trac Blog Archiver",
-  "version": "1.0.1129",
+  "version": "1.0.1131",
   "description": "Trac Blog Archiver",
   "icons": {
         "32": "logo/trac_logo_32.png",
         "128": "logo/trac_logo_128.png"
     },
+  "background": {
+	"scripts": ["scripts/background.js"],
+    "persistent": false
+  },
   "browser_action": {
     "default_icon": "logo/trac_logo_32.png",
 	"default_popup":"page/popup.html"
   },
-"background": {
-	"scripts": ["scripts/background.js"]
-},
   "options_page": "page/options.html",
   "content_scripts":[
 	{
@@ -23,5 +24,5 @@
 	}
   ],
   "update_url": "http://www.mchen.info/chrome/plugins/trac/crx",
-  "permissions":["http://*/", "https://*/", "cookies", "tabs", "unlimitedStorage"]
+  "permissions":["alarms", "background", "http://*/", "https://*/", "cookies", "tabs", "unlimitedStorage"]
 }
