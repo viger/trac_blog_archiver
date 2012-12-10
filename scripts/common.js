@@ -34,13 +34,12 @@ var tracPlugin = {};
             }
 
             self.fnCallBackProcess('check_logined', undefined, function(response){
-                console.log(response.bLogined, 'response.bLogined');
                 if( !response.bLogined ){
                     self.fnCallBackProcess('login');
                 }
             });
 
-            self.fnCallBackProcess('test_ajax');
+            /*self.fnCallBackProcess('test_ajax');*/
 
             $("#blog_url").val(oPluginConfigData.worklog_config.url);
             $("#blog_user_name").val(oPluginConfigData.worklog_config.username);
@@ -64,6 +63,13 @@ var tracPlugin = {};
                 sWorklogDaft = oPluginConfigData.worklog_config.work_log_daft;
             }
             $("textarea[id=" + sWorklogContentId['textarea'] + "]").val(sWorklogDaft)
+            
+            if('undefined' != typeof oPluginConfigData.aTracBlogDataList){
+                self.fnShowBlogList(oPluginConfigData.aTracBlogDataList);
+            }
+            else{
+                self.fnCallBackProcess('get_blog_list');
+            }
         });
     };
 
@@ -73,7 +79,7 @@ var tracPlugin = {};
         }
         
         var request = {'action': action};
-        if( 'undefined' == typeof vData ){
+        if( 'undefined' != typeof vData ){
             request.data = vData;
         }
 
@@ -108,7 +114,7 @@ var tracPlugin = {};
         }
         else{
             oPluginConfigData.worklog_config.work_log_daft = contents;
-            this.fnSetConfig(oPluginConfigData);
+            this.fnCallBackProcess('set_config', oPluginConfigData);
             $("#submitting").html("草稿已保存!");
         }
     };
@@ -208,7 +214,7 @@ var tracPlugin = {};
             }
             
             for( var i=0;i<vData;i++ ){
-                sWeekLog += aTracBlogDataList[i].body;
+                sWeekLog += oPluginConfigData.aTracBlogDataList[i].body;
             }
         }
         else{
@@ -218,7 +224,7 @@ var tracPlugin = {};
             }
 
             $.each(vData, function(i, n){
-                sWeekLog += aTracBlogDataList[n].body;
+                sWeekLog += oPluginConfigData.aTracBlogDataList[n].body;
             });
         }
         
@@ -228,113 +234,26 @@ var tracPlugin = {};
         $("#generate_week_log_result_textarea").text(sWeekLog);
     };
 
-    tp.fnGetBlogList = function(){
-        var url = oPluginConfigData.worklog_config.url + '/blog/author/' + oPluginConfigData.worklog_config.username;
-        var self = this;
-        this.fnSendAjaxData(url, [], function(data){
-            //var sBlogListReg = new RegExp('<h1 class="blog-title" id="(.*)"><a href="(.*)">(.*)<\/a>(.|\n*)<div class="blog-body">(.|\n*)<\/div>', 'ig');
-            $("#btn_Generate_speed").attr("disabled", false);
-            $("#btn_Generate_by_checked").attr("disabled", false);
-            var sBlogListReg = new RegExp('<h1 class="blog-title"(.|\n|\r)*?<ul class="metainfo"', 'ig');
-            var aBlogList = data.match(sBlogListReg);
-            //console.log(aBlogList);
-            var sBlogAReg = new RegExp('<a href="(.*)">(.*)<\/a>', 'ig');
-            var sBlogHrefReg = new RegExp('href="(.*)"', 'ig');
-            var sBlogTitleReg = new RegExp('>(.*)<', 'ig');
-            var oShowList = $("ul[id=work_log_blog_list]");
-            if( aBlogList != null && aBlogList.length > 0 ){
-                $("span[id=loading_blog_list]").css("display", "none");
-                for(var i=0; i< aBlogList.length; i++ ){
-                    var sListString = aBlogList[i];
-                    var aAString = sListString.match(sBlogAReg);
-                    var aHref = aAString[0].match(sBlogHrefReg);
-                    var sHref = aHref[0].replace("href=\"", "").replace('"', '');
-                    var aTitle = aAString[0].match(sBlogTitleReg);
-                    var sTtile = aTitle[0].substr(1, aTitle[0].length - 2);
-                    aTracBlogDataList.push({'title': sTtile, 'href': sHref, 'body': self.fnGetLogBody(sListString)});
-                    if( i < 20){
-                        var oCheckBox = $("<input type='checkbox' value='c_" + i + "' url='" + sHref + "' name='blog_list_checkbox' style='width:25px;margin-right:10px;' />");
-                        var oSpan = $("<span>" + sTtile + "</span>");
-                        var oLi = $("<li></li>");
-                        oCheckBox.appendTo(oLi);
-                        oSpan.appendTo(oLi);
-                        oLi.appendTo(oShowList);
-                    }
-                }
-            }
-            else{
-                $("span[id=loading_blog_list]").html("你还没有发布日志吧~");
-            }
-        }, 'GET', oTracookie);
-    };
-
-    tp.fnGetLogBody =  function(sData){
-        var sTodayLogReg = new RegExp('<\/strong>(.|\n|\r)*?<strong>', 'ig');
-        var aTodayList = sData.match(sTodayLogReg);
-        if( aTodayList != null && aTodayList.length > 0 ){
-            var sTodayList = aTodayList[0];
-            return this.fnGetBodyByFlag(sTodayList);
-        }
-        return "";
-    };
-
-    tp.fnGetBodyByFlag = function(sData, level){
-        if( 'undefined' == typeof level ){
-            level = 0;
-        }
-
-        var sListReg = new RegExp('<[p|li]{1,2}>(.|\n|\r)*?<\/[p|li]{1,2}>', 'ig');
-        var sFristFlagReg = new RegExp("<(.*?)>", 'ig');
-        var aData = sData.match(sListReg);
-        if( aData!= null && aData.length > 0 ){
-            var sSTR = "";
-            for( var i=0;i<aData.length;i++ ){
-                var sFristFlag = aData[i].match(sFristFlagReg);
-                switch(sFristFlag[0]){
-                    case '<p>':
-                        sSTR += this.fnGetBodyByFlag(aData[i].replace(/<p>([\s\S]*)<\/p>/i, "$1"), level+1);
-                    break;
-                    case '<li>':
-                        sSTR += this.fnGetBodyByFlag(aData[i].replace(/<li>([\s\S]*)<\/li>/i, "$1"), level+1);
-                    break;
-                    /*case '<br>':
-                    case '<br/>':
-                        sSTR += this.fnCreateSpace(level) + '* ' + aData[i].replace("<br/>", "\r\n");
-                        sSTR +=  this.fnSplitBr(aData[i], level);
-                    break;
-                    default:
-                        sSTR += this.fnCreateSpace(level) + '* ' + aData[i].replace(/(<[^>]+>)/ig, "") + "\r\n";
-                    */
-                }
-            }
-            //level++;
-            return sSTR;
-        }
-        else{
-            return this.fnSplitBr(sData, level+1).replace(/(<[^>]+>)/ig, "");
-        }
-        return "";
-    };
-
-    tp.fnSplitBr = function(aData, level){
-        var sSTR = "";
-        var aList = aData.split(/<br[ |\/]{0,2}>/ig);
-        var sNotSpaceReg = /[^\s]+/ig;
-        if( aList != null && aList.length > 1 ){
-            for( var i=0;i<aList.length;i++ ){
-                if( aList[i].length > 0 && sNotSpaceReg.test(aList[i]) ){
-                    sSTR += this.fnCreateSpace(level) + '* ' + aList[i].replace(/[\r|\n]+/g, '') + "\r\n";
-                }
+    tp.fnShowBlogList = function(oData){
+        oData = 'undefined' == typeof oData ? oPluginConfigData.aTracBlogDataList : oData;
+        var oShowList = $("ul[id=work_log_blog_list]");
+        $("span[id=loading_blog_list]").css("display", "none");
+        $("#btn_Generate_speed").attr("disabled", false);
+        $("#btn_Generate_by_checked").attr("disabled", false);
+        if( oData.length > 0){
+            for( var i=0; i < oData.length && i < 20; i++){
+                var oCheckBox = $("<input type='checkbox' value='c_" + i + "' url='" + oData[i]['href'] + "' name='blog_list_checkbox' style='width:25px;margin-right:10px;' />");
+                var oSpan = $("<span>" + oData[i]['title'] + "</span>");
+                var oLi = $("<li></li>");
+                oCheckBox.appendTo(oLi);
+                oSpan.appendTo(oLi);
+                oLi.appendTo(oShowList);
             }
         }
         else{
-            this.fnCreateSpace(level) + '* ' + aData  + "\r\n";
+           $("span[id=loading_blog_list]").html("你还没有发布日志吧~");
         }
-
-        return sSTR;
     };
-
-    
 
     tp.fnSetPluginConfig = function(){
         var url = $("#blog_url").val();
@@ -351,7 +270,15 @@ var tracPlugin = {};
         oPluginConfigData.worklog_config.add_work_log_by_input = $('#add_work_log_by_input')[0].checked ? 1 : 0;*/
         oPluginConfigData.worklog_config.check_trac_samp = $("#check_trac_samp").val();
         oPluginConfigData.worklog_config.check_blog_samp = $("#check_blog_samp").val();
-        this.fnSetConfig(oPluginConfigData);
+        if( oPluginConfigData.worklog_config.check_blog_samp > 0 ){
+            this.fnCallBackProcess('set_check_blog_list_by_alarm', oPluginConfigData.worklog_config.check_blog_samp);
+        }
+        this.fnCallBackProcess('set_config', oPluginConfigData);
+        var oSaveBtn = $('input[id=saveSetting_btn]');
+        oSaveBtn.val("已保存").attr('disabled', true);
+        setTimeout(function(){
+            oSaveBtn.val("保存").attr('disabled', false);
+        }, 5000);
         isFirstRun = false;
         this.init();
     };

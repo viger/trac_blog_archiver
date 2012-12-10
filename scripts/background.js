@@ -25,15 +25,25 @@ chrome.extension.onMessage.addListener(function(request, sender, sendResponse) {
       case 'test_ajax':
             tracPluginBackGround.fnAjaxTest();
       break;
+
+      case 'get_blog_list':
+           tracPluginBackGround.fnGetBlogList();
+      break;
+      
+      case 'set_check_blog_list_by_alarm':
+          tracPluginBackGround.fnSetCheckBlogListAlarm(request.data);
+      break;
    }
 });
 
 //chrome.alarms.create("checkBlogList", {periodInMinutes: 0.1});
 
 chrome.alarms.onAlarm.addListener(function(alarm) {
-    if (alarm.name == "checkBlogList")
+    switch(alarm.name)
     {
-       window.localStorage.setItem("background_data_alarm", alarm.scheduledTime );
+        case 'checkBlogList':
+            tracPluginBackGround.fnGetBlogList();
+        break;
     }
 });
 
@@ -53,7 +63,7 @@ var tracPluginBackGround = {};
                                          "blog_categories": 'Work Log',
                                          "blog_show_number": 20,
                                          "check_trac_samp": 0,
-                                         "check_blog_samp": 0
+                                         "check_blog_samp": 5
                               }
     };
 
@@ -69,7 +79,7 @@ var tracPluginBackGround = {};
         var oConfig = oPluginConfigData = this.fnGetConfig();
         
         if( 'undefined' != typeof oConfig.worklog_config.check_trac_samp && oConfig.worklog_config.check_trac_samp > 0 ){
-            this.fnCheckTrac(oConfig.worklog_config.check_trac_samp);
+            //this.fnCheckTrac(oConfig.worklog_config.check_trac_samp);
         }
 
         if( 'undefined' != typeof oConfig.worklog_config.check_blog_samp && oConfig.worklog_config.check_blog_samp > 0 ){
@@ -86,16 +96,186 @@ var tracPluginBackGround = {};
         });
     };
 
-    tp.fnAjaxTest =  function(){
-        var self = this;
-        self.fnAjax({
-            url: 'http://rss.tom.me',
-            data: {'action': 'add'},
-            type: 'POST',
-            success: function(data){
-                console.log(data);
+    tp.fnUpdateBlog =  function(iSamp){
+        if( !this.fnCheckAlarmbyName("checkBlogList") ){
+            chrome.alarms.create("checkBlogList", {periodInMinutes: parseInt(iSamp)});
+        }
+    };
+
+    tp.fnSetCheckBlogListAlarm = function(iSamp){
+        if( this.fnCheckAlarmbyName("checkBlogList") ){
+            chrome.alarms.clear("checkBlogList");
+        }
+
+        chrome.alarms.create("checkBlogList", {periodInMinutes: parseInt(iSamp)});
+    };
+
+    tp.fnCheckAlarmbyName =  function(sName){
+        var bIsExists = false;
+        chrome.alarms.getAll(function(alarms){ 
+            if( alarms.length > 0 ){
+                for(var i=0;i<alarms.length && !bIsExists; i++ ){
+                    if( alarms[i].name == sName ){
+                        bIsExists = true;
+                    }
+                }
             }
         });
+        return bIsExists;
+    };
+
+    tp.fnGetPopupShowBlogListFunc = function(){
+        var oPopup = this.fnGetPopupObject();
+        if( oPopup != null ){
+            if( oPopup.hasOwnProperty('fnShowBlogList') && 'function' == typeof oPopup.fnShowBlogList ){
+                return oPopup.fnShowBlogList;
+            }
+        }
+
+        return null;
+    };
+
+    tp.fnShowNotice = function(msg){
+        var oPopup = this.fnGetPopupObject();
+        if( oPopup != null ){
+            console.log(oPopup);
+            if( oPopup.hasOwnProperty('fnShowNotice') && 'function' == typeof oPopup.fnShowNotice ){
+               var fnShowNotice = oPopup.fnShowNotice;
+               fnShowNotice(msg);
+            }
+        }
+
+        return ;
+    };
+
+    tp.fnGetPopupObject = function(){
+        var aPopup = chrome.extension.getViews({type: "popup"});
+        if( aPopup.length > 0 ){
+            var oPopup = aPopup[0];
+            if( oPopup.hasOwnProperty('tracPlugin') && 'object' == typeof oPopup.tracPlugin ){
+                return oPopup.tracPlugin;
+            }
+        }
+
+        return null;
+    };
+
+    tp.fnGetBlogList = function(){
+        oPluginConfigData = 'undefined' == typeof oPluginConfigData ? this.fnGetConfig() : oPluginConfigData;
+        var url = oPluginConfigData.worklog_config.url + '/blog/author/' + oPluginConfigData.worklog_config.username;
+        var self = this;
+
+        this.fnSendAjaxData(url, [], function(data){
+            //var sBlogListReg = new RegExp('<h1 class="blog-title" id="(.*)"><a href="(.*)">(.*)<\/a>(.|\n*)<div class="blog-body">(.|\n*)<\/div>', 'ig');
+            var aTracBlogDataList = [];
+            var sBlogListReg = new RegExp('<h1 class="blog-title"(.|\n|\r)*?<ul class="metainfo"', 'ig');
+            var aBlogList = data.match(sBlogListReg);
+            var sBlogAReg = new RegExp('<a href="(.*)">(.*)<\/a>', 'ig');
+            var sBlogHrefReg = new RegExp('href="(.*)"', 'ig');
+            var sBlogTitleReg = new RegExp('>(.*)<', 'ig');
+            var aShowList = [];
+            if( aBlogList != null && aBlogList.length > 0 ){
+                for(var i=0; i< aBlogList.length; i++ ){
+                    var sListString = aBlogList[i];
+                    var aAString = sListString.match(sBlogAReg);
+                    var aHref = aAString[0].match(sBlogHrefReg);
+                    var sHref = aHref[0].replace("href=\"", "").replace('"', '');
+                    var aTitle = aAString[0].match(sBlogTitleReg);
+                    var sTtile = aTitle[0].substr(1, aTitle[0].length - 2);
+                    var sBody = self.fnGetLogBody(sListString);
+                    aTracBlogDataList.push({'title': sTtile, 'href': sHref, 'body': sBody});
+                    if( 20 > i ){
+                        aShowList.push({'title': sTtile, 'href': sHref, 'body': sBody});
+                    }
+                }
+
+                oPluginConfigData.aTracBlogDataList = aTracBlogDataList;
+                self.fnSetConfig(oPluginConfigData);
+                var fnShowBlogList = self.fnGetPopupShowBlogListFunc();
+                if( fnShowBlogList != null ){
+                    fnShowBlogList(aShowList);
+                }
+            }
+        }, 'GET', oTracookie);
+    };
+
+    tp.fnGetLogBody =  function(sData){
+        var sTodayLogReg = new RegExp('<\/strong>(.|\n|\r)*?<strong>', 'ig');
+        var aTodayList = sData.match(sTodayLogReg);
+        if( aTodayList != null && aTodayList.length > 0 ){
+            var sTodayList = aTodayList[0];
+            return this.fnGetBodyByFlag(sTodayList);
+        }
+        return "";
+    };
+
+    tp.fnCreateSpace = function(level){
+        if( 1 === level ){
+            return '   ';
+        }
+        
+        var sSpace = "";
+        for(var i=0; i< level;i++){
+            sSpace = sSpace + "   ";
+        }
+
+        return sSpace;
+    };
+
+    tp.fnGetBodyByFlag = function(sData, level){
+        if( 'undefined' == typeof level ){
+            level = 0;
+        }
+
+        var sListReg = new RegExp('<[p|li]{1,2}>(.|\n|\r)*?<\/[p|li]{1,2}>', 'ig');
+        var sFristFlagReg = new RegExp("<(.*?)>", 'ig');
+        var aData = sData.match(sListReg);
+        if( aData!= null && aData.length > 0 ){
+            var sSTR = "";
+            for( var i=0;i<aData.length;i++ ){
+                var sFristFlag = aData[i].match(sFristFlagReg);
+                switch(sFristFlag[0]){
+                    case '<p>':
+                        sSTR += this.fnGetBodyByFlag(aData[i].replace(/<p>([\s\S]*)<\/p>/i, "$1"), level+1);
+                    break;
+                    case '<li>':
+                        sSTR += this.fnGetBodyByFlag(aData[i].replace(/<li>([\s\S]*)<\/li>/i, "$1"), level+1);
+                    break;
+                    /*case '<br>':
+                    case '<br/>':
+                        sSTR += this.fnCreateSpace(level) + '* ' + aData[i].replace("<br/>", "\r\n");
+                        sSTR +=  this.fnSplitBr(aData[i], level);
+                    break;
+                    default:
+                        sSTR += this.fnCreateSpace(level) + '* ' + aData[i].replace(/(<[^>]+>)/ig, "") + "\r\n";
+                    */
+                }
+            }
+            //level++;
+            return sSTR;
+        }
+        else{
+            return this.fnSplitBr(sData, level+1).replace(/(<[^>]+>)/ig, "");
+        }
+        return "";
+    };
+
+    tp.fnSplitBr = function(aData, level){
+        var sSTR = "";
+        var aList = aData.split(/<br[ |\/]{0,2}>/ig);
+        var sNotSpaceReg = /[^\s]+/ig;
+        if( aList != null && aList.length > 1 ){
+            for( var i=0;i<aList.length;i++ ){
+                if( aList[i].length > 0 && sNotSpaceReg.test(aList[i]) ){
+                    sSTR += this.fnCreateSpace(level) + '* ' + aList[i].replace(/[\r|\n]+/g, '') + "\r\n";
+                }
+            }
+        }
+        else{
+            this.fnCreateSpace(level) + '* ' + aData  + "\r\n";
+        }
+
+        return sSTR;
     };
 
     tp.fnSendAjaxData = function(url, data, successFun, type, header, completeFun){
@@ -269,7 +449,7 @@ var tracPluginBackGround = {};
     };
 
     tp.fnSendAjaxHeader = function(oXhr, oUserHeader){
-        var oDefault = {'Accept': '*/*',
+        /*var oDefault = {'Accept': '*\/*',
                         'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
                         'Accept-Encoding': 'gzip,deflate,sdch',
                         'Accept-Language': 'en-US,en;q=0.8,zh-CN;q=0.6,zh;q=0.4',
@@ -286,7 +466,7 @@ var tracPluginBackGround = {};
             if( 'undefined' == typeof oUserHeader || !oUserHeader.hasOwnProperty(key) ){
                 oXhr.setRequestHeader(key, oDefault[key]);
             }
-         }
+         }*/
 
         if( 'undefined' != typeof oUserHeader ){
             for( var key in oUserHeader ){
@@ -360,4 +540,6 @@ var tracPluginBackGround = {};
         window.localStorage.setItem(sPluginDataName, JSON.stringify(data));
     };
 })(tracPluginBackGround);
+
+tracPluginBackGround.init();
 
