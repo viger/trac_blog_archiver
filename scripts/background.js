@@ -27,7 +27,7 @@ chrome.extension.onMessage.addListener(function(request, sender, sendResponse) {
         break;
 
         case 'get_blog_list':
-            tracPluginBackGround.fnGetBlogList();
+            tracPluginBackGround.fnGetBlogList(true);
         break;
 
         case 'set_check_blog_list_by_alarm':
@@ -264,8 +264,8 @@ var tracPluginBackGround = {};
         return null;
     };
 
-    tp.fnGetBlogList = function(){
-        if( !this.fnCheckinWorkTime() ){
+    tp.fnGetBlogList = function(bIsMustBe){
+        if( 'undefined' != typeof bIsMustBe && !bIsMustBe && !this.fnCheckinWorkTime()){
             return ;
         }
         oPluginConfigData = 'undefined' == typeof oPluginConfigData ? this.fnGetConfig() : oPluginConfigData;
