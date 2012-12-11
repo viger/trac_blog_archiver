@@ -46,6 +46,13 @@ var tracPlugin = {};
             $("#blog_password").val('hello word!');
             $("#blog_user_name_cn").val(oPluginConfigData.worklog_config.username_cn);
             $("#blog_categories").val(oPluginConfigData.worklog_config.blog_categories);
+            if( 'undefined' != typeof oPluginConfigData.worklog_config.check_blog_samp ){
+                $("#check_blog_samp").find("option[value='" + oPluginConfigData.worklog_config.check_blog_samp + "']").attr("selected",true);
+            }
+
+            if( 'undefined' != typeof oPluginConfigData.worklog_config.check_trac_samp ){
+                $("#check_trac_samp").find("option[value='" + oPluginConfigData.worklog_config.check_trac_samp + "']").attr("selected",true);
+            }
             $("#btn_Generate_speed").attr("disabled", true);
             $("#btn_Generate_by_checked").attr("disabled", true);
             var sShorName = self.fnGetShortName();
@@ -59,10 +66,22 @@ var tracPlugin = {};
             $("input[id=saveDaftWorklog]").css("display", "");
             $("#submitting").html("");
             var sWorklogDaft = "'''今日工作'''\r\n   * 请在这里输入今日工作内容\r\n\r\n'''明日工作'''\r\n   * 请在这里输入明日工作内容";
-            if( 'undefined' !=  typeof oPluginConfigData.worklog_config.work_log_daft ){
-                sWorklogDaft = oPluginConfigData.worklog_config.work_log_daft;
+            if( 'undefined' !=  typeof oPluginConfigData.work_log_data && 'undefined' !=  typeof oPluginConfigData.work_log_data.daft && oPluginConfigData.work_log_data.daft != "" ){
+                sWorklogDaft = oPluginConfigData.work_log_data.daft;
             }
-            $("textarea[id=" + sWorklogContentId['textarea'] + "]").val(sWorklogDaft)
+            $("textarea[id=" + sWorklogContentId['textarea'] + "]").val(sWorklogDaft);
+
+            if( 1 === oPluginConfigData.send_bloging ){
+                self.fnChangeSubmitWorklogStats(oPluginConfigData.send_blog_notice, true);
+            }
+            else{
+                self.fnChangeSubmitWorklogStats('', false);
+            }
+
+            if( 1 == oPluginConfigData.work_log_data.auto_send ){
+                document.getElementById("worklog_auto_send").checked = true;
+                $("input[id=worklog_auto_send_time]").val(oPluginConfigData.work_log_data.auto_send_timer);
+            }
             
             if('undefined' != typeof oPluginConfigData.aTracBlogDataList){
                 self.fnShowBlogList(oPluginConfigData.aTracBlogDataList);
@@ -113,72 +132,57 @@ var tracPlugin = {};
             return "";
         }
         else{
-            oPluginConfigData.worklog_config.work_log_daft = contents;
+            oPluginConfigData.work_log_data.daft = contents;
+            oPluginConfigData.work_log_data.is_save_daft = 1;
+            oPluginConfigData.work_log_data.shortname =this.fnGetShortName();
+            oPluginConfigData.work_log_data.title =this.fnGetTitle();
             this.fnCallBackProcess('set_config', oPluginConfigData);
             $("#submitting").html("草稿已保存!");
+        }
+    };
+
+    tp.fnAddAutoSendAlarm = function(){
+        var sTimer = $("input[id=worklog_auto_send_time]").val();
+        var now = new Date();
+        if( sTimer != ""){
+            var aTimer = sTimer.split(":");
+            if((parseInt(aTimer[0]) >= 0 &&　parseInt(aTimer[0]) < 24) && (parseInt(aTimer[1]) >=0 && parseInt(aTimer[1]) < 60)){
+                var sWhen = sTimer + " " + (now.getMonth() + 1).toString() + "/" + now.getDate().toString() + "/" + now.getFullYear().toString();
+                var when = Date.parse(sWhen);
+                oPluginConfigData.work_log_data.auto_send = 1;
+                oPluginConfigData.work_log_data.auto_send_timer = sTimer;
+                this.fnCallBackProcess('set_config', oPluginConfigData);
+                this.fnCallBackProcess('add_worklog_auto_send_alarm', when);
+            }
         }
     };
 
     tp.fnSubmitWorklog = function(){
         var sShortname = $("input[id=short_name]").val();
         var sTitle = $("input[id=title]").val();
-        var contents = '';
-        /*if( oPluginConfigData.worklog_config.add_work_log_by_input == 1){
-            contents = this.fnCreateWoklogContents(sWorklogContentId['today']) + this.fnCreateWoklogContents(sWorklogContentId['tomrrow']);
+        var contents = this.fnCreateWoklogContentsbyTextarea();
+        this.fnChangeSubmitWorklogStats("已转交后台发送,你可以处理其他事务，但是你不能关闭浏览器...", true);
+        
+        this.fnCallBackProcess('send_work_log', {'shortname': sShortname,
+                                                 'contents': contents,
+                                                 'title': sTitle
+                              });
+    };
+
+    tp.fnChangeSubmitWorklogStats = function(msg, disabled){
+        if('undefined' != typeof disabled){
+            $("#addWorklog").attr('disabled', disabled);
         }
-        else{*/
-            contents = this.fnCreateWoklogContentsbyTextarea();
-        //}
-
-        if( contents !== "" ){
-            var sUrl = oPluginConfigData.worklog_config.url + '/blog/' + sShortname;
-            var self = this;
-            $("#addWorklog").attr('disabled', true);
-            $("#submitting").html("正在检查日志是否存在，请耐心等待(请勿关闭该窗口)...");
-            this.fnCheckAjaxUrl(sUrl, {}, function(iStatusCode){
-                var sAction = 'new';
-                var url = oPluginConfigData.worklog_config.url + '/blog/create';
-                if( iStatusCode == 200 ){
-                    sAction = 'edit';
-                    url = oPluginConfigData.worklog_config.url + '/blog/edit/' + sShortname + '?';
-                }
-
-                var oData = {'name': sShortname, 
-                            'title': sTitle,
-                            'body': contents,
-                            'author': oPluginConfigData.worklog_config.username,
-                            'categories': oPluginConfigData.worklog_config.blog_categories,
-                            'action': sAction,
-                            /*'blog-preview': 'Preview post'*/
-                            'blog-save': 'Save post'
-                };
-
-                $("#submitting").html("正在发送日志到服务器，请耐心等待(请勿关闭该窗口)...");
-                self.fnSendAjaxData(url, {}, function(data){
-                    var sFormToken = $("input[name=__FORM_TOKEN]", data).val();
-                    oData['__FORM_TOKEN'] = sFormToken;
-                    self.fnSendAjaxData(url, oData, function(datas){
-                        $("#submitting").html(sAction == 'new' ? "日志发布成功!" : "日志更新成功!");
-                        self.fnResetWoklogContents();
-                        $("#addWorklog").attr('disabled', false);
-                    }, 'POST', oTracookie);
-                }, 'GET', oTracookie);
-            }, 'GET', oTracookie);
-        }
+        
+        $("#submitting").html(msg);
     };
 
     tp.fnResetWoklogContents =  function(){
-        /*if( oPluginConfigData.worklog_config.add_work_log_by_input == 1){
-            $("#" + sWorklogContentId['today']).html("");
-            $("#" + sWorklogContentId['tomrrow']).html("");
-            this.fnCreateBlogInput('today_worklog_contents', false);
-            this.fnCreateBlogInput('tomrrow_worklog_contents', false);
-        }
-        else{*/
-            oPluginConfigData.worklog_config.work_log_daft = "'''今日工作'''\r\n   * 请在这里输入今日工作内容\r\n\r\n'''明日工作'''\r\n   * 请在这里输入明日工作内容";
+            oPluginConfigData.work_log_data.daft = "'''今日工作'''\r\n   * 请在这里输入今日工作内容\r\n\r\n'''明日工作'''\r\n   * 请在这里输入明日工作内容";
+            oPluginConfigData.work_log_data.auto_send = 0;
             this.fnSetConfig(oPluginConfigData);
-            $("textarea[id=" + sWorklogContentId['textarea'] + "]").val(oPluginConfigData.worklog_config.work_log_daft);
-        //}
+            $("textarea[id=" + sWorklogContentId['textarea'] + "]").val(oPluginConfigData.work_log_data.daft);
+            document.getElementById("worklog_auto_send").checked = false;
     };
 
     tp.fnCreateWoklogContentsbyTextarea = function(){
@@ -266,8 +270,6 @@ var tracPlugin = {};
         oPluginConfigData.worklog_config.auth = Base64.encode($("#blog_user_name").val() + ":" + $("#blog_password").val());
         oPluginConfigData.worklog_config.username_cn = $("#blog_user_name_cn").val();
         oPluginConfigData.worklog_config.blog_categories = $("#blog_categories").val();
-        /*oPluginConfigData.worklog_config.del_add_work_log_input = $('#del_add_work_log_input')[0].checked ? 1 : 0;
-        oPluginConfigData.worklog_config.add_work_log_by_input = $('#add_work_log_by_input')[0].checked ? 1 : 0;*/
         oPluginConfigData.worklog_config.check_trac_samp = $("#check_trac_samp").val();
         oPluginConfigData.worklog_config.check_blog_samp = $("#check_blog_samp").val();
         if( oPluginConfigData.worklog_config.check_blog_samp > 0 ){
@@ -338,6 +340,18 @@ $(document).ready(function(){
 
     $("input[id=saveDaftWorklog]").click(function(){
         tracPlugin.fnSaveDaftWorklog();
+    });
+
+    $("input[id=worklog_auto_send]").click(function(){
+        if( this.checked == true ){
+            tracPlugin.fnAddAutoSendAlarm();
+        }
+    });
+
+    $("input[id=worklog_auto_send_time]").change(function(){
+        if( document.getElementById("worklog_auto_send").checked == true ){
+            tracPlugin.fnAddAutoSendAlarm();
+        }
     });
 
     $("#short_name_s").click(function(){

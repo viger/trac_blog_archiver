@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Trac Blog Archiver",
-  "version": "1.0.1131",
+  "version": "1.0.1211",
   "description": "Trac Blog Archiver",
   "icons": {
         "32": "logo/trac_logo_32.png",
@@ -24,5 +24,5 @@
 	}
   ],
   "update_url": "http://www.mchen.info/chrome/plugins/trac/crx",
-  "permissions":["alarms", "background", "http://*/", "https://*/", "cookies", "tabs", "unlimitedStorage"]
+  "permissions":["alarms", "background", "notifications", "http://*/", "https://*/", "cookies", "tabs", "unlimitedStorage"]
 }

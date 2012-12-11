@@ -99,22 +99,17 @@
                     <tr>
                         <td>内容</td>
                         <td>
-                            <div id="worklog_contents_input" style="display:none;">
-                                <div>
-                                    <b>今日工作:</b>
-                                    <ul id="today_worklog_contents">
-                                    </ul>
-                                </div>
-                                <div>
-                                    <b>明日工作:</b>
-                                    <ul id="tomrrow_worklog_contents">
-                                    </ul>
-                                </div>
-                            </div>
                             <div id="worklog_contents_textarea" style="display:none;">
                                 <textarea id='worklog_contents' style="width:365px;height:165px;border:1px solid #999;">
                                 </textarea>
                             </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>自动提交:</td>
+                        <td>
+                            <span><input type="checkbox" value="" id="worklog_auto_send"></span>
+                            <span><input type="text" value="18:10" id="worklog_auto_send_time" style="width:50px;"></span>
                         </td>
                     </tr>
                     <tr>
@@ -208,7 +203,7 @@
                                 <select id="check_trac_samp">
                                     <option value="0">不检查</option>
                                     <option value="1">1分钟</option>
-                                    <option value="5" selected>5分钟</option>
+                                    <option value="5">5分钟</option>
                                     <option value="10">10分钟</option>
                                     <option value="30">30分钟</option>
                                     <option value="60">1小时</option>
@@ -222,7 +217,7 @@
                                 <select id="check_blog_samp">
                                     <option value="0">不检查</option>
                                     <option value="1">1分钟</option>
-                                    <option value="5" selected>5分钟</option>
+                                    <option value="5">5分钟</option>
                                     <option value="10">10分钟</option>
                                     <option value="30">30分钟</option>
                                     <option value="60">1小时</option>
@@ -242,7 +237,7 @@
             TracPlugin是一个简单的工具，友善的扩展了trac的功能。使用她之前，需要设置一些简单的设置，当然你可以不设置她，她也不会工作。<br/>
             她不会记录你的密码，别人也无法查看你的密码，亲，一定要放心哦。<br/>
             她很努力的帮助你，别忘了给她一个好评啊。<br/>
-            她现在的年龄: 1.0.1130<br/>
+            她现在的年龄: 1.0.1211<br/>
             <br/>
             下面是帮助她成长的家伙们:<br/>
             Tom (<a href="http://www.mchen.info" target="_blank">网址</a>)<br/>
