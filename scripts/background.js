@@ -282,7 +282,7 @@ var tracPluginBackGround = {};
             var sBlogTitleReg = new RegExp('>(.*)<', 'ig');
             var aShowList = [];
             if( aBlogList != null && aBlogList.length > 0 ){
-                for(var i=0; i< aBlogList.length; i++ ){
+                for(var i=0; i < aBlogList.length; i++ ){
                     var sListString = aBlogList[i];
                     var aAString = sListString.match(sBlogAReg);
                     var aHref = aAString[0].match(sBlogHrefReg);
@@ -291,7 +291,7 @@ var tracPluginBackGround = {};
                     var sTtile = aTitle[0].substr(1, aTitle[0].length - 2);
                     var sBody = self.fnGetLogBody(sListString);
                     aTracBlogDataList.push({'title': sTtile, 'href': sHref, 'body': sBody});
-                    if( 20 > i ){
+                    if( oPluginConfigData.worklog_config.blog_show_number > i ){
                         aShowList.push({'title': sTtile, 'href': sHref, 'body': sBody});
                     }
                 }
@@ -649,6 +649,9 @@ var tracPluginBackGround = {};
     tp.fnSetConfig = function(data){
         if( 'undefined' == typeof data ){
             data = oInitPluginConfigData;
+        }
+        else{
+            oPluginConfigData = data;
         }
 
         window.localStorage.setItem(sPluginDataName, JSON.stringify(data));

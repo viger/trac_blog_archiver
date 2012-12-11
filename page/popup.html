@@ -67,10 +67,14 @@
      .log_child{
         margin-left:5px;
      }
+     #header{
+        padding:5px;
+     }
 
      </style>
   </head>
   <body>
+    <div id="header"><img src="../logo/trac_logo_32.gif" width="224" height="32" border="0" alt=""><span style="float:right;padding-top:10px;color:#ccc;font-style:italic;">她一直在默默协助你!</span></div>
     <div id="tabs">
         <ul>
             <li><a href="#add_new_blog">添加日志</a></li>
@@ -124,6 +128,7 @@
        </div>
           <div id="generate_week_log">
             <div id="generate_week_log_list">
+                <input id="btn_get_blog_list" type="button" value="立即更新日志列表" style="cursor:pointer;"/>
                 <span id="loading_blog_list"><b>正在载入日志列表....</b></span>
                   <fieldset>
                         <legend> 快速生成 </legend>
@@ -234,7 +239,8 @@
                 </table>
           </div>
           <div id="about_plugin" style="padding:10px;">
-            TracPlugin是一个简单的工具，友善的扩展了trac的功能。使用她之前，需要设置一些简单的设置，当然你可以不设置她，她也不会工作。<br/>
+            <center><img src="../logo/trac_logo_128.gif" width="400" height="85" border="0" alt=""></center><br/>
+            TracBlogAchiver是一个简单的工具，友善的扩展了trac的功能。使用她之前，需要设置一些简单的设置，当然你可以不设置她，她也不会工作。<br/>
             她不会记录你的密码，别人也无法查看你的密码，亲，一定要放心哦。<br/>
             她很努力的帮助你，别忘了给她一个好评啊。<br/>
             她现在的年龄: 1.0.1211<br/>
@@ -249,7 +255,6 @@
     <script src="../jquery/jquery-1.8.2.js"></script>
     <script src="../jquery/jquery-ui.js"></script>
     <script src="../scripts/base64.js"></script>
-    <script src="../scripts/common.js"></script>
-    <script src="../scripts/pageaction_popup.js"></script>
+    <script src="../scripts/popup.js"></script>
   </body>
 </html>
