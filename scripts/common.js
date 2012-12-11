@@ -157,6 +157,10 @@ var tracPlugin = {};
         }
     };
 
+    tp.fnRemoveAutoSendAlarm = function(){
+        this.fnCallBackProcess('remove_worklog_auto_send_alarm');
+    };
+
     tp.fnSubmitWorklog = function(){
         var sShortname = $("input[id=short_name]").val();
         var sTitle = $("input[id=title]").val();
@@ -345,6 +349,9 @@ $(document).ready(function(){
     $("input[id=worklog_auto_send]").click(function(){
         if( this.checked == true ){
             tracPlugin.fnAddAutoSendAlarm();
+        }
+        else{
+            tracPlugin.fnRemoveAutoSendAlarm();
         }
     });
 

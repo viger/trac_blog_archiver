@@ -22,29 +22,31 @@ chrome.extension.onMessage.addListener(function(request, sender, sendResponse) {
             }
         break;
 
-      case 'test_ajax':
+        case 'test_ajax':
             tracPluginBackGround.fnAjaxTest();
-      break;
+        break;
 
-      case 'get_blog_list':
-           tracPluginBackGround.fnGetBlogList();
-      break;
-      
-      case 'set_check_blog_list_by_alarm':
-          tracPluginBackGround.fnSetCheckBlogListAlarm(request.data);
-      break;
+        case 'get_blog_list':
+            tracPluginBackGround.fnGetBlogList();
+        break;
 
-      case 'add_worklog_auto_send_alarm':
-          tracPluginBackGround.fnAddWorklogAutoSendAlarm(request.data);
-      break;
+        case 'set_check_blog_list_by_alarm':
+            tracPluginBackGround.fnSetCheckBlogListAlarm(request.data);
+        break;
 
-      case 'send_work_log':
-          tracPluginBackGround.fnSendWorkLog(request.data['shortname'], request.data['title'], request.data['contents']);
-      break;
+        case 'add_worklog_auto_send_alarm':
+            tracPluginBackGround.fnAddWorklogAutoSendAlarm(request.data);
+        break;
+
+        case 'remove_worklog_auto_send_alarm':
+            tracPluginBackGround.fnRemoveAlarm("autoSendWorkLog");
+        break;
+
+        case 'send_work_log':
+            tracPluginBackGround.fnSendWorkLog(request.data['shortname'], request.data['title'], request.data['contents']);
+        break;
    }
 });
-
-//chrome.alarms.create("checkBlogList", {periodInMinutes: 0.1});
 
 chrome.alarms.onAlarm.addListener(function(alarm) {
     switch(alarm.name)
@@ -119,6 +121,7 @@ var tracPluginBackGround = {};
             var oTracookie = this.fnGetTraCookies();
             var sUrl = oPluginConfigData.worklog_config.url + '/blog/' + sShortname;
             var self = this;
+            self.fnShowNotifications("请注意:", '你设置的定时发送日志已经启动，开始发送日志了哦，亲。');
             self.fnGetCallPopupFunc('fnChangeSubmitWorklogStats', ['正在检查日志是否存在，请耐心等待...', true]);
             oPluginConfigData.send_blog_notice = '正在检查日志是否存在，请耐心等待...';
             oPluginConfigData.send_bloging = 1;
@@ -159,7 +162,7 @@ var tracPluginBackGround = {};
                         self.fnGetCallPopupFunc('fnChangeSubmitWorklogStats', [sAction == 'new' ? "日志发布成功!" : "日志更新成功!", false]);
                         self.fnGetCallPopupFunc('fnResetWoklogContents');
                         clearInterval(oSendLogoInterval);
-                        self.fnShowNotifications();
+                        self.fnShowNotifications("恭喜你:", '日志已经成功发送,如需确认请打开trac即可。');
                         chrome.browserAction.setIcon({path: './logo/trac_logo_32.png'});
                         oPluginConfigData.send_blog_notice = '';
                         oPluginConfigData.send_bloging = 0;
@@ -179,11 +182,11 @@ var tracPluginBackGround = {};
         }
     };
 
-    tp.fnShowNotifications = function(){
+    tp.fnShowNotifications = function(title, msg){
         var notification = window.webkitNotifications.createNotification(
             '../logo/trac_logo_32.png',
-            "恭喜你:",
-            '日志已经成功发送,如需确认请打开trac即可。'
+            title,
+            msg
         );
         notification.show();
     };
@@ -195,19 +198,19 @@ var tracPluginBackGround = {};
     };
 
     tp.fnSetCheckBlogListAlarm = function(iSamp){
-        if( this.fnCheckAlarmbyName("checkBlogList") ){
-            chrome.alarms.clear("checkBlogList");
-        }
-
+        this.fnRemoveAlarm("checkBlogList");
         chrome.alarms.create("checkBlogList", {periodInMinutes: parseInt(iSamp)});
     };
 
     tp.fnAddWorklogAutoSendAlarm = function(iSamp){
-        if( this.fnCheckAlarmbyName("autoSendWorkLog") ){
-            chrome.alarms.clear("autoSendWorkLog");
-        }
-
+        this.fnRemoveAlarm("autoSendWorkLog");
         chrome.alarms.create("autoSendWorkLog", {when: parseInt(iSamp)});
+    };
+
+    tp.fnRemoveAlarm = function(sAlarmName){
+         if( this.fnCheckAlarmbyName(sAlarmName) ){
+            chrome.alarms.clear(sAlarmName);
+        }
     };
 
     tp.fnCheckAlarmbyName =  function(sName){
