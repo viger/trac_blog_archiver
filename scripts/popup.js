@@ -284,6 +284,9 @@ var tracPlugin = {};
         if( oPluginConfigData.worklog_config.check_blog_samp > 0 ){
             this.fnCallBackProcess('set_check_blog_list_by_alarm', oPluginConfigData.worklog_config.check_blog_samp);
         }
+        else{
+             this.fnCallBackProcess('remove_check_blog_list_by_alarm');
+        }
         this.fnCallBackProcess('set_config', oPluginConfigData);
         var oSaveBtn = $('input[id=saveSetting_btn]');
         oSaveBtn.val("已保存").attr('disabled', true);

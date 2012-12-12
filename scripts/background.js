@@ -42,6 +42,10 @@ chrome.extension.onMessage.addListener(function(request, sender, sendResponse) {
             tracPluginBackGround.fnRemoveAlarm("autoSendWorkLog");
         break;
 
+        case 'remove_check_blog_list_by_alarm':
+            tracPluginBackGround.fnRemoveAlarm("checkBlogList");
+        break;
+
         case 'send_work_log':
             tracPluginBackGround.fnSendWorkLog(request.data['shortname'], request.data['title'], request.data['contents']);
         break;
