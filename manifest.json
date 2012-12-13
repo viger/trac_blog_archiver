@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Trac Blog Archiver",
-  "version": "1.0.1211",
+  "version": "1.0.1213",
   "description": "Trac Blog Archiver",
   "icons": {
         "32": "logo/trac_logo_32.png",
