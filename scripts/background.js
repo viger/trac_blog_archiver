@@ -129,6 +129,7 @@ var tracPluginBackGround = {};
             self.fnGetCallPopupFunc('fnChangeSubmitWorklogStats', ['正在检查日志是否存在，请耐心等待...', true]);
             oPluginConfigData.send_blog_notice = '正在检查日志是否存在，请耐心等待...';
             oPluginConfigData.send_bloging = 1;
+            oPluginConfigData.send_time_samp = (new Date()).getTime();
             self.fnSetConfig(oPluginConfigData);
             var iSendLogoIndex = 1;
             var oSendLogoInterval = setInterval(function(){
@@ -247,7 +248,7 @@ var tracPluginBackGround = {};
                         return fnCall(vParams);
                     break;
                     default:
-                        return fnCall();
+                        return fnCall(oPopup);
                     break;
                }
             }

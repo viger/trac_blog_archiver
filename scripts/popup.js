@@ -186,10 +186,10 @@ var tracPlugin = {};
         $("#submitting").html(msg);
     };
 
-    tp.fnResetWoklogContents =  function(){
+    tp.fnResetWoklogContents =  function(self){
             oPluginConfigData.work_log_data.daft = "'''今日工作'''\r\n   * 请在这里输入今日工作内容\r\n\r\n'''明日工作'''\r\n   * 请在这里输入明日工作内容";
             oPluginConfigData.work_log_data.auto_send = 0;
-            this.fnCallBackProcess('set_config', oPluginConfigData);
+            self.fnCallBackProcess('set_config', oPluginConfigData);
             $("textarea[id=" + sWorklogContentId['textarea'] + "]").val(oPluginConfigData.work_log_data.daft);
             document.getElementById("worklog_auto_send").checked = false;
     };
