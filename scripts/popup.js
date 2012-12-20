@@ -71,16 +71,20 @@ var tracPlugin = {};
             }
             $("textarea[id=" + sWorklogContentId['textarea'] + "]").val(sWorklogDaft);
 
-            if( 1 === oPluginConfigData.send_bloging ){
+            if( 1 === oPluginConfigData.send_bloging  && parseInt(oPluginConfigData.send_time_samp) + 28800000 > date.getTime()){
                 self.fnChangeSubmitWorklogStats(oPluginConfigData.send_blog_notice, true);
             }
             else{
                 self.fnChangeSubmitWorklogStats('', false);
             }
-
+            
             if( 1 == oPluginConfigData.work_log_data.auto_send ){
                 document.getElementById("worklog_auto_send").checked = true;
                 $("input[id=worklog_auto_send_time]").val(oPluginConfigData.work_log_data.auto_send_timer);
+            }
+            else{
+                document.getElementById("worklog_auto_send").checked = false;
+                $("input[id=worklog_auto_send_time]").val("18:10");
             }
             
             self.fnReflushBlogList(oPluginConfigData);
@@ -244,6 +248,7 @@ var tracPlugin = {};
         sWeekLog += '\r\n本周工作\r\n';
         $("div[id=generate_week_log_result]").css("display", "");
         $("div[id=generate_week_log_list]").css("display", "none");
+        $("#generate_week_log_result_title").val(this.fnGetTitle("周报"));
         $("#generate_week_log_result_textarea").text(sWeekLog);
     };
 
@@ -297,10 +302,11 @@ var tracPlugin = {};
         this.init();
     };
 
-    tp.fnGetTitle = function(){
+    tp.fnGetTitle = function(prefix){
         var sUsername = oPluginConfigData.worklog_config.username_cn;
+        prefix = ("undefined" == typeof prefix) ? "工作日志" : prefix;
 
-        return "工作日志 " + this.fnGetStringDate() + " " + sUsername;
+        return prefix + " " + this.fnGetStringDate() + " " + sUsername;
     };
 
     tp.fnGetIntDate = function(){

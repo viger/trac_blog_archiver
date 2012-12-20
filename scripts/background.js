@@ -389,6 +389,7 @@ var tracPluginBackGround = {};
 
     tp.fnSendAjaxData = function(url, data, successFun, type, header, completeFun){
         var self = this;
+        oPluginConfigData = 'undefined' == typeof oPluginConfigData ? this.fnGetConfig() : oPluginConfigData;
         self.fnAjax({
             url: url,
             beforeSend : function(req) {
@@ -408,16 +409,52 @@ var tracPluginBackGround = {};
                 }
             },
             statusCode:{403: function(){
-                    self.fnGetCallPopupFunc('fnShowNotice', "服务器权限认证失败，请输入正确的用户名和密码!<br/>如果你没有登录Trac,请先<a href='" + oPluginConfigData.worklog_config.url + "' target='_blank'>登录Trac</a>,并忽略前面的提示消息。");
+                    if( oPluginConfigData.send_bloging == 1){
+                        self.fnRestartAutoSendWorklog(self);
+                    }
+                    else{
+                        var msg = "服务器权限认证失败，请输入正确的用户名和密码!<br/>如果你没有登录Trac,请先<a href='" + oPluginConfigData.worklog_config.url + "' target='_blank'>登录Trac</a>,并忽略前面的提示消息。";
+                        self.fnGetCallPopupFunc('fnShowNotice', msg);
+                    }
                 },
                 401: function(){
-                    self.fnGetCallPopupFunc('fnShowNotice', "服务器权限认证失败，请输入正确的用户名和密码!<br/>如果你没有登录Trac,请先<a href='" + oPluginConfigData.worklog_config.url + "' target='_blank'>登录Trac</a>,并忽略前面的提示消息。");
+                    if( oPluginConfigData.send_bloging == 1){
+                        self.fnRestartAutoSendWorklog(self);
+                    }
+                    else{
+                        var msg = "服务器权限认证失败，请输入正确的用户名和密码!<br/>如果你没有登录Trac,请先<a href='" + oPluginConfigData.worklog_config.url + "' target='_blank'>登录Trac</a>,并忽略前面的提示消息。";
+                        self.fnGetCallPopupFunc('fnShowNotice', msg);
+                    }
                 },
                 404: function(){
-                    self.fnGetCallPopupFunc('fnShowNotice', "无法连接服务。");
+                    if( oPluginConfigData.send_bloging == 1){
+                        self.fnRestartAutoSendWorklog(self);
+                    }
+                    else{
+                        var msg = "无法连接服务器。";
+                        self.fnGetCallPopupFunc('fnShowNotice', msg);
+                    }
                 }
             }
         });
+    };
+
+    tp.fnRestartAutoSendWorklog = function(self){
+        oPluginConfigData = 'undefined' == typeof oPluginConfigData ? self.fnGetConfig() : oPluginConfigData;
+         oPluginConfigData.send_log_times = ("undefined" == typeof  oPluginConfigData.send_log_times) ? 1 :  oPluginConfigData.send_log_times;
+        if( oPluginConfigData.send_log_times <= 5 ){
+            oPluginConfigData.send_log_times += 1;
+            var msg = "发送日志错误，程序将在5分钟后重启发送程序。";
+            self.fnShowNotifications(msg);
+            var timer = (new Date()).getTime() + 300000;
+            self.fnAddWorklogAutoSendAlarm(timer);
+        }
+        else{
+            oPluginConfigData.send_log_times = 0;
+            var msg = "重试了5次都失败了，请检查你的网络设置。不再自动发送了。";
+            self.fnShowNotifications(msg);
+        }
+        self.fnSetConfig(oPluginConfigData);
     };
 
     tp.fnCheckAjaxUrl = function(url, data, successFun, type, header){
