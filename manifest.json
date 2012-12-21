@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "Trac Blog Archiver",
-  "version": "1.0.1220",
-  "description": "Trac Blog Archiver",
+  "version": "1.0.1221",
+  "description": "Trac Blog Archiver是一个简单的工具，友善的扩展了trac的功能。使用她之前，需要设置一些简单的设置，当然你可以不设置她，她也不会工作。",
   "icons": {
         "32": "logo/trac_logo_32.png",
         "128": "logo/trac_logo_128.png"
@@ -15,14 +15,6 @@
     "default_icon": "logo/trac_logo_32.png",
 	"default_popup":"page/popup.html"
   },
-  "options_page": "page/options.html",
-  "content_scripts":[
-	{
-		"matches":["http://*/*"],
-		"css":[],
-		"js":["jquery/jquery-1.8.3.min.js","scripts/contentscript.js"]
-	}
-  ],
   "update_url": "http://www.mchen.info/chrome/plugins/trac/crx",
   "permissions":["alarms", "background", "notifications", "http://*/", "https://*/", "cookies", "tabs", "unlimitedStorage"]
 }

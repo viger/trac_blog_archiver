@@ -80,13 +80,19 @@ var tracPluginBackGround = {};
                                          "blog_categories": 'Work Log',
                                          "blog_show_number": 20,
                                          "check_trac_samp": 0,
-                                         "check_blog_samp": 60
+                                         "check_blog_samp": 60,
+                                         "is_configed": false
                               },
                               "work_log_data":{
                                          "title": "",
                                          "daft": "",
                                          "shrotname": "",
                                          "is_save_daft": 0
+                             },
+                             "send_blog":{
+                                         "notice": "",
+                                         "time_samp": 0,
+                                         "stats": false
                              }
     };
 
@@ -95,7 +101,7 @@ var tracPluginBackGround = {};
     var oTracookie = null;
 
     tp.showVersion = function(){
-        console.log('1.0.1204');
+        console.log('1.0.1221');
     };
 
     tp.init = function(){
@@ -115,7 +121,8 @@ var tracPluginBackGround = {};
         var url = oPluginConfigData.worklog_config.url + '/login';
         var self = this;
         this.fnSendAjaxData(url, [], function(){
-            self.fnGetTraCookies()
+            self.fnGetTraCookies();
+            self.fnGetBlogList(true);
         });
     };
 
@@ -127,9 +134,9 @@ var tracPluginBackGround = {};
             var self = this;
             self.fnShowNotifications("请注意:", '你设置的定时发送日志已经启动，开始发送日志了哦，亲。');
             self.fnGetCallPopupFunc('fnChangeSubmitWorklogStats', ['正在检查日志是否存在，请耐心等待...', true]);
-            oPluginConfigData.send_blog_notice = '正在检查日志是否存在，请耐心等待...';
-            oPluginConfigData.send_bloging = 1;
-            oPluginConfigData.send_time_samp = (new Date()).getTime();
+            oPluginConfigData.send_blog.notice = '正在检查日志是否存在，请耐心等待...';
+            oPluginConfigData.send_blog.stats = true;
+            oPluginConfigData.send_blog.time_samp = (new Date()).getTime();
             self.fnSetConfig(oPluginConfigData);
             var iSendLogoIndex = 1;
             var oSendLogoInterval = setInterval(function(){
@@ -157,7 +164,7 @@ var tracPluginBackGround = {};
                 };
 
                 self.fnGetCallPopupFunc('fnChangeSubmitWorklogStats', ['正在发送日志到服务器，请耐心等待...', true]);
-                oPluginConfigData.send_blog_notice = '正在发送日志到服务器，请耐心等待...';
+                oPluginConfigData.send_blog.notice = '正在发送日志到服务器，请耐心等待...';
                 self.fnSetConfig(oPluginConfigData);
                 self.fnSendAjaxData(url, {}, function(data){
                     var rFormTokenRegexp = /[\s\S]*<input type="hidden" name="__FORM_TOKEN" value="(.*)?" \/>[\s\S]*/g;
@@ -169,9 +176,11 @@ var tracPluginBackGround = {};
                         clearInterval(oSendLogoInterval);
                         self.fnShowNotifications("恭喜你:", '日志已经成功发送,如需确认请打开trac即可。');
                         chrome.browserAction.setIcon({path: './logo/trac_logo_32.png'});
-                        oPluginConfigData.send_blog_notice = '';
-                        oPluginConfigData.send_bloging = 0;
+                        //oPluginConfigData.work_log_data.daft = "";
+                        oPluginConfigData.work_log_data.auto_send = 0;
                         oPluginConfigData.work_log_data.is_save_daft = 0;
+                        oPluginConfigData.send_blog.notice = '';
+                        oPluginConfigData.send_blog.stats = false;
                         self.fnSetConfig(oPluginConfigData);
                     }, 'POST', oTracookie);
                 }, 'GET', oTracookie);
@@ -197,9 +206,8 @@ var tracPluginBackGround = {};
     };
 
     tp.fnUpdateBlog =  function(iSamp){
-        if( !this.fnCheckAlarmbyName("checkBlogList") ){
-            chrome.alarms.create("checkBlogList", {periodInMinutes: parseInt(iSamp)});
-        }
+        this.fnRemoveAlarm("checkBlogList");
+        chrome.alarms.create("checkBlogList", {periodInMinutes: parseInt(iSamp)});
     };
 
     tp.fnSetCheckBlogListAlarm = function(iSamp){
@@ -213,9 +221,17 @@ var tracPluginBackGround = {};
     };
 
     tp.fnRemoveAlarm = function(sAlarmName){
-         if( this.fnCheckAlarmbyName(sAlarmName) ){
-            chrome.alarms.clear(sAlarmName);
-        }
+        var bIsExists = false;
+        chrome.alarms.getAll(function(alarms){ 
+            if( alarms.length > 0 ){
+                for(var i=0;i<alarms.length && !bIsExists; i++ ){
+                    if( alarms[i].name == sAlarmName ){
+                        bIsExists = true;
+                        chrome.alarms.clear(sAlarmName);
+                    }
+                }
+            }
+        });
     };
 
     tp.fnCheckAlarmbyName =  function(sName){
@@ -248,7 +264,7 @@ var tracPluginBackGround = {};
                         return fnCall(vParams);
                     break;
                     default:
-                        return fnCall(oPopup);
+                        return fnCall();
                     break;
                }
             }
@@ -285,9 +301,9 @@ var tracPluginBackGround = {};
             var sBlogAReg = new RegExp('<a href="(.*)">(.*)<\/a>', 'ig');
             var sBlogHrefReg = new RegExp('href="(.*)"', 'ig');
             var sBlogTitleReg = new RegExp('>(.*)<', 'ig');
-            var aShowList = [];
+            //var aShowList = [];
             if( aBlogList != null && aBlogList.length > 0 ){
-                for(var i=0; i < aBlogList.length; i++ ){
+                for(var i=0; i < aBlogList.length && oPluginConfigData.worklog_config.blog_show_number > i; i++ ){
                     var sListString = aBlogList[i];
                     var aAString = sListString.match(sBlogAReg);
                     var aHref = aAString[0].match(sBlogHrefReg);
@@ -296,14 +312,14 @@ var tracPluginBackGround = {};
                     var sTtile = aTitle[0].substr(1, aTitle[0].length - 2);
                     var sBody = self.fnGetLogBody(sListString);
                     aTracBlogDataList.push({'title': sTtile, 'href': sHref, 'body': sBody});
-                    if( oPluginConfigData.worklog_config.blog_show_number > i ){
+                    /*if( oPluginConfigData.worklog_config.blog_show_number > i ){
                         aShowList.push({'title': sTtile, 'href': sHref, 'body': sBody});
-                    }
+                    }*/
                 }
 
                 oPluginConfigData.aTracBlogDataList = aTracBlogDataList;
                 self.fnSetConfig(oPluginConfigData);
-                self.fnGetCallPopupFunc('fnShowBlogList', aShowList);
+                self.fnGetCallPopupFunc('fnShowBlogList', aTracBlogDataList);
             }
         }, 'GET', oTracookie);
     };

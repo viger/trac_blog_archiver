@@ -1,7 +1,6 @@
 var tracPlugin = {};
 (function(tp){
     var date = new Date();
-    var isFirstRun = false;
     var oPluginConfigData = {};
     var aTracBlogDataList = [];
     var sWorklogContentId = {'today': 'today_worklog_contents',
@@ -25,21 +24,21 @@ var tracPlugin = {};
         self.fnCallBackProcess('get_config', undefined, function(response){
             oPluginConfigData = response.oData;
 
-            if( isFirstRun ){
+            if( !oPluginConfigData.worklog_config.is_configed ){
                 var sNotice = "欢迎使用trac日志工具,这是你的第一次，请先设置本插件，然后<a href='" + oPluginConfigData.worklog_config.url + "' target='_blank'>登录trac</a>再使用。当前版本: " + oPluginConfigData.version;
                 self.fnShowNotice(sNotice);
             }
             else{
                 self.fnHiddenNotice();
+                self.fnCallBackProcess('check_logined', undefined, function(response){
+                    if( !response.bLogined ){
+                        self.fnCallBackProcess('login');
+                    }
+                    else{
+                        self.fnReflushBlogList(oPluginConfigData);
+                    }
+                });
             }
-
-            self.fnCallBackProcess('check_logined', undefined, function(response){
-                if( !response.bLogined ){
-                    self.fnCallBackProcess('login');
-                }
-            });
-
-            /*self.fnCallBackProcess('test_ajax');*/
 
             $("#blog_url").val(oPluginConfigData.worklog_config.url);
             $("#blog_user_name").val(oPluginConfigData.worklog_config.username);
@@ -53,6 +52,7 @@ var tracPlugin = {};
             if( 'undefined' != typeof oPluginConfigData.worklog_config.check_trac_samp ){
                 $("#check_trac_samp").find("option[value='" + oPluginConfigData.worklog_config.check_trac_samp + "']").attr("selected",true);
             }
+            $("#blog_show_number").val(oPluginConfigData.worklog_config.blog_show_number);
             $("#btn_Generate_speed").attr("disabled", true);
             $("#btn_Generate_by_checked").attr("disabled", true);
             var sShorName = self.fnGetShortName();
@@ -66,12 +66,13 @@ var tracPlugin = {};
             $("input[id=saveDaftWorklog]").css("display", "");
             $("#submitting").html("");
             var sWorklogDaft = "'''今日工作'''\r\n   * 请在这里输入今日工作内容\r\n\r\n'''明日工作'''\r\n   * 请在这里输入明日工作内容";
+            var sendBlogTimeOld = parseInt(oPluginConfigData.send_blog.time_samp) + 28800000 - date.getTime();
             if( 'undefined' !=  typeof oPluginConfigData.work_log_data && 'undefined' !=  typeof oPluginConfigData.work_log_data.daft && oPluginConfigData.work_log_data.daft != "" ){
                 sWorklogDaft = oPluginConfigData.work_log_data.daft;
             }
             $("textarea[id=" + sWorklogContentId['textarea'] + "]").val(sWorklogDaft);
 
-            if( 1 === oPluginConfigData.send_bloging  && parseInt(oPluginConfigData.send_time_samp) + 28800000 > date.getTime()){
+            if( true === oPluginConfigData.send_blog.stats  && sendBlogTimeOld > 0 ){
                 self.fnChangeSubmitWorklogStats(oPluginConfigData.send_blog_notice, true);
             }
             else{
@@ -86,8 +87,6 @@ var tracPlugin = {};
                 document.getElementById("worklog_auto_send").checked = false;
                 $("input[id=worklog_auto_send_time]").val("18:10");
             }
-            
-            self.fnReflushBlogList(oPluginConfigData);
         });
     };
 
@@ -167,6 +166,9 @@ var tracPlugin = {};
     };
 
     tp.fnRemoveAutoSendAlarm = function(){
+        oPluginConfigData.work_log_data.auto_send = 0;
+        oPluginConfigData.work_log_data.auto_send_timer = 0;
+        this.fnCallBackProcess('set_config', oPluginConfigData);
         this.fnCallBackProcess('remove_worklog_auto_send_alarm');
     };
 
@@ -190,11 +192,8 @@ var tracPlugin = {};
         $("#submitting").html(msg);
     };
 
-    tp.fnResetWoklogContents =  function(self){
-            oPluginConfigData.work_log_data.daft = "'''今日工作'''\r\n   * 请在这里输入今日工作内容\r\n\r\n'''明日工作'''\r\n   * 请在这里输入明日工作内容";
-            oPluginConfigData.work_log_data.auto_send = 0;
-            self.fnCallBackProcess('set_config', oPluginConfigData);
-            $("textarea[id=" + sWorklogContentId['textarea'] + "]").val(oPluginConfigData.work_log_data.daft);
+    tp.fnResetWoklogContents =  function(){
+            /*$("textarea[id=" + sWorklogContentId['textarea'] + "]").val("'''今日工作'''\r\n   * 请在这里输入今日工作内容\r\n\r\n'''明日工作'''\r\n   * 请在这里输入明日工作内容");*/
             document.getElementById("worklog_auto_send").checked = false;
     };
 
@@ -285,7 +284,10 @@ var tracPlugin = {};
         oPluginConfigData.worklog_config.username_cn = $("#blog_user_name_cn").val();
         oPluginConfigData.worklog_config.blog_categories = $("#blog_categories").val();
         oPluginConfigData.worklog_config.check_trac_samp = $("#check_trac_samp").val();
+        var blog_show_number = oPluginConfigData.worklog_config.blog_show_number;
+        oPluginConfigData.worklog_config.blog_show_number = $("#blog_show_number").val();
         oPluginConfigData.worklog_config.check_blog_samp = $("#check_blog_samp").val();
+        oPluginConfigData.worklog_config.is_configed = true;
         if( oPluginConfigData.worklog_config.check_blog_samp > 0 ){
             this.fnCallBackProcess('set_check_blog_list_by_alarm', oPluginConfigData.worklog_config.check_blog_samp);
         }
@@ -293,12 +295,14 @@ var tracPlugin = {};
              this.fnCallBackProcess('remove_check_blog_list_by_alarm');
         }
         this.fnCallBackProcess('set_config', oPluginConfigData);
+        if( blog_show_number != oPluginConfigData.worklog_config.blog_show_number ){
+            this.fnCallBackProcess('get_blog_list');
+        }
         var oSaveBtn = $('input[id=saveSetting_btn]');
         oSaveBtn.val("已保存").attr('disabled', true);
         setTimeout(function(){
             oSaveBtn.val("保存").attr('disabled', false);
         }, 5000);
-        isFirstRun = false;
         this.init();
     };
 
@@ -358,7 +362,7 @@ $(document).ready(function(){
         tracPlugin.fnSubmitWorklog();
     });
 
-    $("input[id=saveDaftWorklog]").click(function(){
+    $(document).delegate("#worklog_contents_textarea", "keyup change", function(){
         tracPlugin.fnSaveDaftWorklog();
     });
 
